@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
+import java.io.FileNotFoundException;
 
 import com.bluefletch.motorola.BarcodeScan;
 import com.bluefletch.motorola.DataWedgeIntentHandler;
@@ -41,7 +42,8 @@ public class MotorolaDatawedgePlugin extends CordovaPlugin {
     final static String dwTmpName = "_DWUnsupportedProfileName.profile";
 
     private interface FileOp {
-        void run(String uri, String filename) throws Exception;
+        void run(String uri, String filename,
+                CallbackContext callbackContext) throws Exception;
     }
 
     @Override
@@ -118,9 +120,9 @@ public class MotorolaDatawedgePlugin extends CordovaPlugin {
             String mUri = args.getString(0);
             String mFileName = args.getString(1);
             threadhelper( new FileOp( ){
-                public void run(String uri, String filename) throws Exception {
-                    copyDataWedgeProfile(uri, filename);
-                    callbackContext.success();
+                public void run(String uri, String filename,
+                        CallbackContext callbackContext) throws Exception {
+                    copyDataWedgeProfile(uri, filename, callbackContext);
                 }
             }, mUri, mFileName, callbackContext);
         }
@@ -180,9 +182,10 @@ public class MotorolaDatawedgePlugin extends CordovaPlugin {
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
-                    f.run(uri, filename);
+                    f.run(uri, filename, callbackContext);
                 } catch ( Exception e) {
                     e.printStackTrace();
+                    callbackContext.error("Copying datawedge profile");
                 }
             }
         });
@@ -191,7 +194,8 @@ public class MotorolaDatawedgePlugin extends CordovaPlugin {
     /*
      * Copy datawedge profile from cordova assets to auto import folder
      */
-    private void copyDataWedgeProfile(String uri, String filename) {
+    private void copyDataWedgeProfile(String uri, String filename,
+            CallbackContext callbackContext) {
         try {
             final String dwFinalName = filename;
             final File tmpFile = new File(dwOutputPath, dwTmpName);
@@ -200,8 +204,8 @@ public class MotorolaDatawedgePlugin extends CordovaPlugin {
             finalFile.delete();
 
             Uri srcUri = Uri.parse(uri + dwFinalName);
-            CordovaResourceApi.OpenForReadResult ofrr = resourceApi.openForRead(srcUri);
             File srcFile = new File(srcUri.getPath());
+            CordovaResourceApi.OpenForReadResult ofrr = resourceApi.openForRead(srcUri);
             InputStream raw = ofrr.inputStream;
 
             // copy the raw data to the internal phone storage
@@ -222,6 +226,7 @@ public class MotorolaDatawedgePlugin extends CordovaPlugin {
                     }
                 } catch (Exception e) {
                     Log.i(TAG,"Error Copying datawedge profile");
+                    callbackContext.error("Copying datawedge profile");
                     return;
                 }
             } finally {
@@ -235,9 +240,14 @@ public class MotorolaDatawedgePlugin extends CordovaPlugin {
 
             // move the file to the output file so it gets imported
             tmpFile.renameTo(finalFile);
+            callbackContext.success("success");
+        } catch (FileNotFoundException e) {
+            Log.i(TAG, "Datawedge Profile not found", e);
+            callbackContext.error("Datawedge profile not found");
         } catch (Exception e) {
             Log.d(TAG, e.getMessage());
             Log.i(TAG, "Copying datawedge profile", e);
+            callbackContext.error("Copying datawedge profile");
         }
     }
 }
