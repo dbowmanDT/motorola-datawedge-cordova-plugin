@@ -18,6 +18,9 @@ xmlns:android="http://schemas.android.com/apk/res/android"
                 <param name="android-package" value="com.bluefletch.motorola.plugin.MotorolaDatawedgePlugin"/>
             </feature>
         </config-file>
+         <edit-config file="AndroidManifest.xml" target="/manifest/application/activity[@android:name='com.datatrac.hybrid.driver.DatatracforDrivers']" mode="merge">
+             <activity android:launchMode="singleTop" />
+         </edit-config>
          <config-file target="AndroidManifest.xml" parent="/*/application/activity">
            <intent-filter>
                 <action android:name="com.bluefletch.motorola.datawedge.ACTION" />
